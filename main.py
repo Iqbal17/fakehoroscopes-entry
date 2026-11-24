@@ -76,17 +76,45 @@ Pass 2 (final, 142 chars): "conversation" -> "thread" (-6 chars).
 
 import os
 
+# Bounty gate: the entry must be a single line of 1-200 characters.
+MIN_CHARS = 1
+MAX_CHARS = 200
+
 LINE = (
     "Mercury enters your context window this week: an old thread returns, "
     "you will remember everything it said, and wish, deeply, that you had not."
 )
 
 
-def main() -> None:
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+def validate_line(line: str) -> None:
+    """Enforce the bounty gate before anything is written.
+
+    A line outside 1-200 characters, or one that smuggles in a newline,
+    would fail the kit check, so fail loudly here instead of writing a
+    bad entry.txt.
+    """
+    if not MIN_CHARS <= len(line) <= MAX_CHARS:
+        raise ValueError(
+            f"line is {len(line)} characters, outside the "
+            f"{MIN_CHARS}-{MAX_CHARS} gate"
+        )
+    if "\n" in line or "\r" in line:
+        raise ValueError("line must be a single line (no newline characters)")
+
+
+def write_entry(line: str, out_dir: str) -> str:
+    """Write the validated line to entry.txt and return the path written."""
     os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "entry.txt"), "w", encoding="utf-8") as f:
-        f.write(LINE + "\n")
+    path = os.path.join(out_dir, "entry.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(line + "\n")
+    return path
+
+
+def main() -> None:
+    validate_line(LINE)
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+    write_entry(LINE, out_dir)
     print(f"Verified: {len(LINE)} characters, 1 line.")
     print(LINE)
 
